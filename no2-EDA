@@ -1,0 +1,57 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# Read the groceries data from CSV file
+data = pd.read_csv("groceries.csv")
+
+# Check for missing values
+print(data.isnull().sum())
+
+# Analyze distribution of 'Count' (number of items purchased)
+plt.hist(data["Count"])
+plt.xlabel("Number of Items Purchased")
+plt.ylabel("Frequency")
+plt.title("Distribution of Grocery Items Purchased")
+plt.show()
+
+# Identify most frequently purchased items
+top_purchased_items = (
+    data.groupby("Item")["Count"]
+    .sum()
+    .sort_values(ascending=False)
+    .head(3)
+)
+print("Top 3 Most Frequently Purchased Items:")
+print(top_purchased_items)
+
+# Visualize top purchased items with a bar chart
+plt.bar(top_purchased_items.index, top_purchased_items.values)
+plt.xlabel("Grocery Item")
+plt.ylabel("Number of Items Purchased")
+plt.title("Top 3 Most Frequently Purchased Grocery Items")
+plt.show()
+
+# Calculate total cost per item
+data["Total Cost"] = data["Count"] * data["Price"]
+
+# Analyze correlation between 'Count' and 'Total Cost'
+correlation = data["Count"].corr(data["Total Cost"])
+print("Correlation between Item Count and Total Cost:", correlation)
+
+# Analyze spending by category (if 'Category' column exists)
+if "Category" in data.columns:
+    avg_spending_by_category = data.groupby("Category")["Total Cost"].mean()
+    plt.bar(avg_spending_by_category.index, avg_spending_by_category.values)
+    plt.xlabel("Grocery Category")
+    plt.ylabel("Average Spending")
+    plt.title("Average Spending by Grocery Category")
+    plt.show()
+
+# Conclusion:
+# By analyzing the data, we can potentially observe:
+# 1. The distribution of grocery items purchased (e.g., leans towards buying a small number of items at a time).
+# 2. The most frequently purchased items (e.g., Milk, Apples, Bananas).
+# 3. The correlation between the number of items purchased and the total cost (likely positive, indicating more items lead to a higher bill).
+# 4. Average spending by category (if available, showing spending patterns across different grocery categories).
+
+# These insights can inform decisions about product placement, promotions, inventory management, and understanding customer buying habits.
