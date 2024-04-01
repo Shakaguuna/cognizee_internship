@@ -1,0 +1,91 @@
+import pandas as pd
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+
+# Load the Indian movies data
+data = pd.read_csv("indian movies.csv")
+
+# Preprocess data (handle missing values, normalize ratings, etc.)
+# Check for missing values
+print(data.isnull().sum())
+
+# Replace the '-' values in the 'Rating(10)' column with NaN
+data['Rating(10)'] = data['Rating(10)'].replace({'-': np.nan})
+
+# Convert the 'Rating(10)' column to float
+data['Rating(10)'] = data['Rating(10)'].astype(float)
+
+# Handle missing values by filling them with the mean rating
+data['Rating(10)'].fillna(data['Rating(10)'].mean(), inplace=True)
+
+# Normalize ratings
+min_rating = data['Rating(10)'].min()
+max_rating = data['Rating(10)'].max()
+data['Rating(10)'] = (data['Rating(10)'] - min_rating) / (max_rating - min_rating)
+
+# Create a user-item matrix (consider weighting ratings by votes)
+user_item_matrix = data.pivot_table(
+    index="Genre", columns="Movie Name", values="Rating(10)", aggfunc=np.mean
+)
+
+# Calculate cosine similarity between user profiles (genres)
+genre_similarity = cosine_similarity(user_item_matrix.fillna(0).transpose())
+
+def recommend_movies(genre, user_rated_movies, num_recommendations=10):
+    """
+    Recommends movies based on user preferences (genre) and rated movies.
+
+    Args:
+        genre (str): The user's preferred genre.
+        user_rated_movies (list): List of movie names the user has rated.
+        num_recommendations (int, optional): Number of recommendations to return. Defaults to 10.
+
+    Returns:
+        list: A list of recommended movie names.
+    """
+
+    genre = genre.lower()
+    user_rated_movies = [movie.lower() for movie in user_rated_movies]
+
+    if genre not in user_item_matrix.index:
+        return []
+
+    # Get the index of the user's preferred genre
+    genre_index = user_item_matrix.index.get_loc(genre)
+
+    # Calculate similarity scores for all genres
+    similarity_scores = list(enumerate(genre_similarity[genre_index]))
+
+    # Sort genres by similarity score in descending order
+    similarity_scores.sort(key=lambda x: x[1], reverse=True)
+
+    # Filter out rated movies and the user's preferred genre
+    filtered_scores = [
+        score for score in similarity_scores if user_item_matrix.columns[score[0]].lower() not in user_rated_movies and score[0] != genre_index
+    ]
+
+    # Select top `num_recommendations` similar genres
+    top_genres = [filtered_scores[i][0] for i in range(min(num_recommendations, len(filtered_scores)))]
+
+    # Get recommendations from the top similar genres
+    recommendations = []
+    for genre_idx in top_genres:
+        genre_name = user_item_matrix.columns[genre_idx]
+        recommendations.extend(list(user_item_matrix[genre_name].sort_values(ascending=False).index))
+
+    # Remove duplicates (may occur due to multiple genres for movies)
+    recommendations = list(set(recommendations))
+
+    return recommendations[:num_recommendations]
+
+# Example usage
+user_genre = "Comedy"
+user_rated_movies = ["Dangal", "PK"]
+
+recommendations = recommend_movies(user_genre, user_rated_movies)
+if recommendations:
+    print("Recommended movies for you:")
+    for movie in recommendations:
+        print(movie)
+else:
+    print("No recommendations available for the given user preferences.")
